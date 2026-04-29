@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>アンケート管理・分析</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f4f4f2;min-height:100vh;color:#111}
+.header{background:#111;color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:16px;font-weight:600;letter-spacing:.03em}
+.header .ver{font-size:11px;color:#888}
+.container{max-width:1000px;margin:0 auto;padding:24px 16px}
+/* 接続パネル */
+.connect-card{background:#fff;border-radius:12px;padding:24px;border:1px solid #e0e0db;margin-bottom:20px}
+.connect-card h2{font-size:14px;font-weight:600;margin-bottom:14px;color:#111}
+.field-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}
+.field{display:flex;flex-direction:column;gap:4px}
+.lbl{font-size:12px;color:#666}
+input[type=text],input[type=password]{width:100%;font-size:13px;padding:7px 10px;border-radius:7px;border:1px solid #ddd;background:#fff;color:#111;font-family:inherit;outline:none;transition:border-color .15s}
+input:focus{border-color:#555}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;font-size:13px;font-weight:500;border-radius:7px;border:1px solid #ddd;background:#fff;color:#111;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn:hover{background:#f0f0ee}
+.bp{background:#111;color:#fff;border-color:transparent}
+.bp:hover{background:#333}
+.bd{color:#c0392b;border-color:#f5c6c6}
+.bd:hover{background:#fdf0f0}
+.bs{background:#2d6a4f;color:#fff;border-color:transparent}
+.bs:hover{background:#1e4d38}
+/* ステータスバー */
+.status{font-size:12px;padding:7px 12px;border-radius:7px;margin-top:10px}
+.status.ok{background:#e1f5ee;color:#085041}
+.status.err{background:#fcebeb;color:#791f1f}
+.status.loading{background:#f0f0ee;color:#666}
+/* タブ */
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{padding:7px 14px;font-size:13px;border-radius:7px;border:1px solid #ddd;cursor:pointer;color:#888;background:#fff;font-family:inherit}
+.tab.on{background:#111;color:#fff;border-color:transparent}
+/* カード共通 */
+.card{background:#fff;border-radius:12px;padding:20px;border:1px solid #e0e0db;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;color:#111;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;background:#f0f0ee;color:#555}
+/* 基本集計 */
+.q-block{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #f0f0ee}
+.q-block:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.q-label{font-size:13px;font-weight:500;color:#111;margin-bottom:10px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:13px}
+.bar-opt{min-width:120px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#444;font-size:12px}
+.bar-wrap{flex:1;background:#f0f0ee;border-radius:999px;height:12px;overflow:hidden}
+.bar-fill{height:12px;background:#378ADD;border-radius:999px;transition:width .4s}
+.bar-pct{min-width:42px;text-align:right;color:#444;font-size:12px;font-weight:500}
+.bar-cnt{min-width:40px;text-align:right;color:#999;font-size:11px}
+.q-total{font-size:11px;color:#999;margin-top:5px}
+/* 自由記述一覧 */
+.free-list{display:flex;flex-direction:column;gap:6px}
+.free-item{background:#f8f8f6;border-radius:7px;padding:10px 12px;font-size:13px;color:#333;line-height:1.6;border-left:3px solid #ddd;position:relative}
+.free-item .free-ts{font-size:11px;color:#bbb;margin-top:4px}
+/* クロス集計 */
+.cross-selectors{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.cross-selectors select{font-size:13px;padding:6px 9px;border-radius:7px;border:1px solid #ddd;background:#fff;color:#111;font-family:inherit;outline:none}
+.cross-label{font-size:12px;color:#666}
+.matrix-wrap{overflow-x:auto}
+table.matrix{border-collapse:collapse;font-size:12px;min-width:400px}
+table.matrix th,table.matrix td{border:1px solid #e0e0db;padding:7px 10px;text-align:center}
+table.matrix th{background:#f8f8f6;font-weight:500;color:#555}
+table.matrix th.row-header{text-align:left;min-width:120px;max-width:180px}
+table.matrix td.row-header{text-align:left;color:#444;font-weight:500;background:#fafaf8}
+table.matrix td.cell-val{cursor:default}
+table.matrix td.cell-val:hover{background:#f0f7ff}
+.cell-pct{font-size:10px;color:#999;display:block}
+/* 回答一覧 */
+.resp-table-wrap{overflow-x:auto}
+table.resp-table{border-collapse:collapse;font-size:12px;width:100%;min-width:500px}
+table.resp-table th{background:#f8f8f6;border:1px solid #e0e0db;padding:7px 10px;font-weight:500;color:#555;text-align:left;white-space:nowrap}
+table.resp-table td{border:1px solid #f0f0ee;padding:6px 10px;color:#333;vertical-align:top;max-width:200px;word-break:break-all}
+table.resp-table tr:nth-child(even){background:#fafaf8}
+/* CSV */
+.csv-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* 空状態 */
+.empty{text-align:center;color:#bbb;font-size:13px;padding:32px 0}
+/* サマリー数値 */
+.summary-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.summary-box{background:#f8f8f6;border-radius:9px;padding:12px 16px;flex:1;min-width:120px}
+.summary-box .s-num{font-size:22px;font-weight:600;color:#111}
+.summary-box .s-label{font-size:11px;color:#888;margin-top:2px}
+/* ページネーション */
+.pagination{display:flex;gap:4px;margin-top:10px;align-items:center;flex-wrap:wrap}
+.page-btn{padding:4px 9px;font-size:12px;border-radius:6px;border:1px solid #ddd;background:#fff;cursor:pointer;font-family:inherit;color:#555}
+.page-btn.on{background:#111;color:#fff;border-color:transparent}
+.page-info{font-size:12px;color:#888;margin:0 6px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>アンケート管理・分析</h1>
+  <span class="ver">survey_admin</span>
+</div>
+
+<div class="container">
+
+  <!-- 接続パネル -->
+  <div class="connect-card">
+    <h2>JSONBin 接続設定</h2>
+    <div class="field-row">
+      <div class="field">
+        <span class="lbl">APIキー</span>
+        <input type="password" id="apiKey" placeholder="$2a$10$..." autocomplete="off">
+      </div>
+      <div class="field">
+        <span class="lbl">Bin ID</span>
+        <input type="text" id="binId" placeholder="例: 6634abc123..." autocomplete="off">
+      </div>
+      <button class="btn bp" onclick="loadData()">読み込む</button>
+    </div>
+    <div id="statusBar" style="display:none"></div>
+  </div>
+
+  <!-- メインコンテンツ（読み込み後に表示） -->
+  <div id="mainContent" style="display:none">
+
+    <!-- サマリー -->
+    <div class="summary-row" id="summaryRow"></div>
+
+    <!-- タブ -->
+    <div class="tabs">
+      <button class="tab on" onclick="switchTab('basic')" id="tab-basic">基本集計</button>
+      <button class="tab" onclick="switchTab('cross')" id="tab-cross">クロス集計</button>
+      <button class="tab" onclick="switchTab('free')" id="tab-free">自由記述一覧</button>
+      <button class="tab" onclick="switchTab('list')" id="tab-list">回答一覧</button>
+      <button class="tab" onclick="switchTab('csv')" id="tab-csv">CSVエクスポート</button>
+    </div>
+
+    <!-- 基本集計タブ -->
+    <div id="pane-basic">
+      <div class="card" id="basicContent"></div>
+    </div>
+
+    <!-- クロス集計タブ -->
+    <div id="pane-cross" style="display:none">
+      <div class="card">
+        <div class="card-title">クロス集計</div>
+        <div class="cross-selectors">
+          <span class="cross-label">行（縦軸）</span>
+          <select id="crossRow" onchange="renderCross()"></select>
+          <span class="cross-label">×</span>
+          <span class="cross-label">列（横軸）</span>
+          <select id="crossCol" onchange="renderCross()"></select>
+        </div>
+        <div class="matrix-wrap" id="crossMatrix"></div>
+      </div>
+    </div>
+
+    <!-- 自由記述タブ -->
+    <div id="pane-free" style="display:none">
+      <div id="freeContent"></div>
+    </div>
+
+    <!-- 回答一覧タブ -->
+    <div id="pane-list" style="display:none">
+      <div class="card">
+        <div class="card-title">
+          回答一覧
+          <span class="badge" id="listBadge"></span>
+        </div>
+        <div class="resp-table-wrap">
+          <table class="resp-table" id="listTable"></table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+
+    <!-- CSVタブ -->
+    <div id="pane-csv" style="display:none">
+      <div class="card">
+        <div class="card-title">CSVエクスポート</div>
+        <p style="font-size:13px;color:#555;margin-bottom:14px;line-height:1.7">
+          全回答データをCSVファイルでダウンロードできます。Excel・Google スプレッドシートで開いて詳細分析が可能です。<br>
+          自由記述の内容もCSVに含まれます。文字コードはUTF-8（BOM付き）です。
+        </p>
+        <div class="csv-actions">
+          <button class="btn bs" onclick="downloadCSV('all')">全データCSVダウンロード</button>
+          <button class="btn" onclick="downloadCSV('select')">選択肢回答のみ</button>
+          <button class="btn" onclick="downloadCSV('free')">自由記述のみ</button>
+        </div>
+        <div id="csvPreview" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let responses = [];
+let questions = [];
+let currentTab = 'basic';
+const PAGE_SIZE = 20;
+let currentPage = 1;
+
+// ── データ読み込み ──
+async function loadData() {
+  const ak = document.getElementById('apiKey').value.trim();
+  const bid = document.getElementById('binId').value.trim();
+  if (!ak || !bid) { showStatus('APIキーとBin IDを両方入力してください。', 'err'); return; }
+  showStatus('読み込み中...', 'loading');
+  try {
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${bid}/latest`, {
+      headers: { 'X-Master-Key': ak }
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    const rec = d.record;
+    responses = rec.responses || [];
+    questions = rec.questions || inferQuestions(responses);
+    showStatus(`${responses.length}件の回答を読み込みました。`, 'ok');
+    renderAll();
+    document.getElementById('mainContent').style.display = '';
+  } catch(e) {
+    showStatus(`読み込みに失敗しました: ${e.message}`, 'err');
+  }
+}
+
+// 旧フォーマット互換：questionsフィールドがない場合に回答から推測
+function inferQuestions(resps) {
+  if (!resps.length) return [];
+  const keys = Object.keys(resps[0].answers || {})
+    .filter(k => !k.startsWith('free'))
+    .sort((a,b) => Number(a) - Number(b));
+  return keys.map((k,i) => ({ id: i, text: `Q${Number(k)+1}`, type: 'unknown', options: [] }));
+}
+
+function showStatus(msg, type) {
+  const el = document.getElementById('statusBar');
+  el.style.display = '';
+  el.textContent = msg;
+  el.className = `status ${type}`;
+}
+
+// ── 全体描画 ──
+function renderAll() {
+  renderSummary();
+  renderBasic();
+  renderCrossSelectors();
+  renderCross();
+  renderFree();
+  renderList();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  ['basic','cross','free','list','csv'].forEach(t => {
+    document.getElementById(`pane-${t}`).style.display = t === tab ? '' : 'none';
+    document.getElementById(`tab-${t}`).className = 'tab' + (t === tab ? ' on' : '');
+  });
+}
+
+// ── サマリー ──
+function renderSummary() {
+  const dates = responses.map(r => r.ts).filter(Boolean).sort();
+  const first = dates.length ? fmtDate(dates[0]) : '—';
+  const last  = dates.length ? fmtDate(dates[dates.length-1]) : '—';
+  const selectQs = questions.filter(q => q.type === 'radio' || q.type === 'checkbox' || q.type === 'freeplus');
+  const freeQs   = questions.filter(q => q.type === 'text' || q.type === 'freeplus');
+  document.getElementById('summaryRow').innerHTML = `
+    <div class="summary-box"><div class="s-num">${responses.length}</div><div class="s-label">総回答数</div></div>
+    <div class="summary-box"><div class="s-num">${questions.length}</div><div class="s-label">質問数</div></div>
+    <div class="summary-box"><div class="s-num">${first}</div><div class="s-label">最初の回答</div></div>
+    <div class="summary-box"><div class="s-num">${last}</div><div class="s-label">最新の回答</div></div>
+  `;
+}
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function fmtDateTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ── 基本集計 ──
+function renderBasic() {
+  const tot = responses.length;
+  if (!tot) { document.getElementById('basicContent').innerHTML = '<div class="empty">回答データがありません</div>'; return; }
+
+  let html = `<div class="card-title">基本集計 <span class="badge">合計 ${tot}件</span></div>`;
+
+  questions.forEach((q, qi) => {
+    if (q.type === 'text') return; // 自由記述は別タブ
+    html += `<div class="q-block">`;
+    html += `<div class="q-label">Q${qi+1}. ${esc(q.text)}</div>`;
+
+    const opts = q.options && q.options.length ? [...q.options] : collectOptions(qi);
+    if (q.type === 'freeplus') opts.push('【自由記述あり】');
+
+    const cnt = {};
+    opts.forEach(o => cnt[o] = 0);
+    responses.forEach(r => {
+      const a = (r.answers || {})[qi];
+      if (Array.isArray(a)) a.forEach(v => { if (cnt[v] !== undefined) cnt[v]++; });
+      else if (a && cnt[a] !== undefined) cnt[a]++;
+      if (q.type === 'freeplus') {
+        const fr = (r.answers || {})['free'+qi];
+        if (fr && fr.trim()) cnt['【自由記述あり】']++;
+      }
+    });
+
+    opts.forEach(o => {
+      const c = cnt[o] || 0;
+      const pct = tot ? Math.round(c / tot * 100) : 0;
+      html += `<div class="bar-row">
+        <div class="bar-opt" title="${esc(o)}">${esc(o)}</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="bar-pct">${pct}%</div>
+        <div class="bar-cnt">${c}件</div>
+      </div>`;
+    });
+    html += `<div class="q-total">有効回答 ${tot}件</div>`;
+    html += `</div>`;
+  });
+
+  document.getElementById('basicContent').innerHTML = html;
+}
+
+function collectOptions(qi) {
+  const set = new Set();
+  responses.forEach(r => {
+    const a = (r.answers || {})[qi];
+    if (Array.isArray(a)) a.forEach(v => set.add(v));
+    else if (a) set.add(a);
+  });
+  return [...set];
+}
+
+// ── クロス集計 ──
+function renderCrossSelectors() {
+  const selQs = questions.filter(q => q.type === 'radio' || q.type === 'checkbox' || q.type === 'freeplus');
+  const opts = selQs.map((q,i) => `<option value="${questions.indexOf(q)}">Q${questions.indexOf(q)+1}. ${esc(q.text.slice(0,30))}</option>`).join('');
+  document.getElementById('crossRow').innerHTML = opts;
+  document.getElementById('crossCol').innerHTML = opts;
+  // デフォルトで列を1つずらす
+  if (selQs.length >= 2) document.getElementById('crossCol').selectedIndex = 1;
+}
+
+function renderCross() {
+  const rowQi = parseInt(document.getElementById('crossRow').value);
+  const colQi = parseInt(document.getElementById('crossCol').value);
+  const rowQ  = questions[rowQi];
+  const colQ  = questions[colQi];
+  if (!rowQ || !colQ) return;
+  if (rowQi === colQi) {
+    document.getElementById('crossMatrix').innerHTML = '<div style="color:#c0392b;font-size:13px;padding:12px">行と列に同じ質問が選択されています。異なる質問を選んでください。</div>';
+    return;
+  }
+
+  const rowOpts = rowQ.options && rowQ.options.length ? [...rowQ.options] : collectOptions(rowQi);
+  const colOpts = colQ.options && colQ.options.length ? [...colQ.options] : collectOptions(colQi);
+
+  // マトリクス集計
+  const matrix = {};
+  rowOpts.forEach(r => { matrix[r] = {}; colOpts.forEach(c => matrix[r][c] = 0); });
+
+  responses.forEach(resp => {
+    const ra = getAnswerArr((resp.answers||{})[rowQi]);
+    const ca = getAnswerArr((resp.answers||{})[colQi]);
+    ra.forEach(rv => {
+      if (!matrix[rv]) return;
+      ca.forEach(cv => { if (matrix[rv][cv] !== undefined) matrix[rv][cv]++; });
+    });
+  });
+
+  const tot = responses.length;
+  let html = `<table class="matrix"><thead><tr><th class="row-header">Q${rowQi+1} \\ Q${colQi+1}</th>`;
+  colOpts.forEach(c => html += `<th>${esc(c.slice(0,16))}</th>`);
+  html += `<th>合計</th></tr></thead><tbody>`;
+
+  rowOpts.forEach(rv => {
+    const rowTotal = colOpts.reduce((s,cv) => s + (matrix[rv]?.[cv]||0), 0);
+    html += `<tr><td class="row-header">${esc(rv)}</td>`;
+    colOpts.forEach(cv => {
+      const n = matrix[rv]?.[cv] || 0;
+      const pct = tot ? Math.round(n/tot*100) : 0;
+      html += `<td class="cell-val">${n}<span class="cell-pct">${pct}%</span></td>`;
+    });
+    const rPct = tot ? Math.round(rowTotal/tot*100) : 0;
+    html += `<td class="cell-val" style="font-weight:500">${rowTotal}<span class="cell-pct">${rPct}%</span></td></tr>`;
+  });
+
+  // 列合計行
+  html += `<tr style="background:#f8f8f6"><td class="row-header" style="font-weight:500">合計</td>`;
+  colOpts.forEach(cv => {
+    const n = rowOpts.reduce((s,rv) => s + (matrix[rv]?.[cv]||0), 0);
+    const pct = tot ? Math.round(n/tot*100) : 0;
+    html += `<td style="font-weight:500">${n}<span class="cell-pct">${pct}%</span></td>`;
+  });
+  html += `<td style="font-weight:600">${tot}</td></tr>`;
+  html += `</tbody></table>`;
+  html += `<div style="font-size:11px;color:#999;margin-top:8px">数値=件数、%=全回答中の割合</div>`;
+
+  document.getElementById('crossMatrix').innerHTML = html;
+}
+
+function getAnswerArr(a) {
+  if (!a) return [];
+  if (Array.isArray(a)) return a;
+  return [a];
+}
+
+// ── 自由記述一覧 ──
+function renderFree() {
+  const freeQs = questions.filter(q => q.type === 'text' || q.type === 'freeplus');
+  if (!freeQs.length) {
+    document.getElementById('freeContent').innerHTML = '<div class="card"><div class="empty">自由記述の質問がありません</div></div>';
+    return;
+  }
+  let html = '';
+  freeQs.forEach(q => {
+    const qi = questions.indexOf(q);
+    const entries = [];
+    responses.forEach(r => {
+      if (q.type === 'text') {
+        const v = (r.answers||{})[qi];
+        if (v && v.trim()) entries.push({ text: v, ts: r.ts });
+      } else {
+        const v = (r.answers||{})['free'+qi];
+        if (v && v.trim()) entries.push({ text: v, ts: r.ts });
+      }
+    });
+    html += `<div class="card"><div class="card-title">Q${qi+1}. ${esc(q.text)} <span class="badge">${entries.length}件</span></div>`;
+    if (!entries.length) {
+      html += '<div class="empty">回答なし</div>';
+    } else {
+      html += '<div class="free-list">';
+      entries.forEach(e => {
+        html += `<div class="free-item">${esc(e.text)}<div class="free-ts">${fmtDateTime(e.ts)}</div></div>`;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  document.getElementById('freeContent').innerHTML = html;
+}
+
+// ── 回答一覧 ──
+function renderList() {
+  currentPage = 1;
+  renderListPage();
+}
+
+function renderListPage() {
+  const tot = responses.length;
+  const totalPages = Math.ceil(tot / PAGE_SIZE);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = responses.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('listBadge').textContent = `${tot}件`;
+
+  // ヘッダー
+  let thead = '<thead><tr><th>#</th><th>日時</th>';
+  questions.forEach((q,i) => thead += `<th>Q${i+1}: ${esc(q.text.slice(0,15))}${q.text.length>15?'…':''}</th>`);
+  thead += '</tr></thead>';
+
+  // ボディ
+  let tbody = '<tbody>';
+  slice.forEach((r, idx) => {
+    tbody += `<tr><td style="color:#bbb">${start+idx+1}</td><td style="white-space:nowrap">${fmtDateTime(r.ts)}</td>`;
+    questions.forEach((q, qi) => {
+      const a = (r.answers||{})[qi];
+      const af = (r.answers||{})['free'+qi];
+      let cell = '';
+      if (Array.isArray(a)) cell = a.join('、');
+      else if (a) cell = a;
+      if (af && af.trim()) cell += (cell ? ' / ' : '') + '[自由]' + af.slice(0,30) + (af.length>30?'…':'');
+      tbody += `<td>${esc(cell||'—')}</td>`;
+    });
+    tbody += '</tr>';
+  });
+  tbody += '</tbody>';
+
+  document.getElementById('listTable').innerHTML = thead + tbody;
+
+  // ページネーション
+  let pag = '';
+  if (totalPages > 1) {
+    pag += `<span class="page-info">${tot}件中 ${start+1}〜${Math.min(start+PAGE_SIZE,tot)}件</span>`;
+    for (let p = 1; p <= totalPages; p++) {
+      pag += `<button class="page-btn${p===currentPage?' on':''}" onclick="goPage(${p})">${p}</button>`;
+    }
+  }
+  document.getElementById('pagination').innerHTML = pag;
+}
+
+function goPage(p) { currentPage = p; renderListPage(); }
+
+// ── CSV エクスポート ──
+function downloadCSV(mode) {
+  const bom = '\uFEFF';
+  let rows = [];
+
+  // ヘッダー行
+  const header = ['#', '回答日時'];
+  if (mode === 'all' || mode === 'select') {
+    questions.forEach((q,i) => {
+      if (q.type !== 'text') header.push(`Q${i+1}_${q.text}`);
+    });
+  }
+  if (mode === 'all' || mode === 'free') {
+    questions.forEach((q,i) => {
+      if (q.type === 'text') header.push(`Q${i+1}_${q.text}`);
+      if (q.type === 'freeplus') header.push(`Q${i+1}_自由記述`);
+    });
+  }
+  rows.push(header);
+
+  // データ行
+  responses.forEach((r, idx) => {
+    const row = [String(idx+1), fmtDateTime(r.ts)];
+    if (mode === 'all' || mode === 'select') {
+      questions.forEach((q,i) => {
+        if (q.type === 'text') return;
+        const a = (r.answers||{})[i];
+        row.push(Array.isArray(a) ? a.join('|') : (a||''));
+      });
+    }
+    if (mode === 'all' || mode === 'free') {
+      questions.forEach((q,i) => {
+        if (q.type === 'text') row.push((r.answers||{})[i]||'');
+        if (q.type === 'freeplus') row.push((r.answers||{})['free'+i]||'');
+      });
+    }
+    rows.push(row);
+  });
+
+  const csv = bom + rows.map(r => r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  const modeLabel = mode === 'all' ? '全データ' : mode === 'select' ? '選択肢' : '自由記述';
+  a.download = `survey_${modeLabel}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+
+  // プレビュー
+  const preview = rows.slice(0,4).map(r => r.join(', ')).join('\n');
+  document.getElementById('csvPreview').innerHTML =
+    `<div style="font-size:11px;color:#888;margin-bottom:4px">プレビュー（先頭3件）</div>
+     <pre style="font-size:11px;background:#f4f4f2;padding:10px;border-radius:7px;overflow-x:auto;color:#444;line-height:1.6">${esc(preview)}</pre>`;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
